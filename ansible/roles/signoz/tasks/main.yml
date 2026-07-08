@@ -142,19 +142,34 @@
   become_user: "{{ ops_user }}"
 
 - name: Wait for ClickHouse to be ready
-  wait_for:
-    host: 127.0.0.1
-    port: 8123
-    timeout: 120
+  command: docker compose exec -T signoz-telemetrystore-clickhouse-0-0 clickhouse-client --query "SELECT 1"
+  args:
+    chdir: /opt/signoz/pours/deployment
+  become: true
+  become_user: "{{ ops_user }}"
+  register: clickhouse_check
+  retries: 30
+  delay: 10
+  until: clickhouse_check.rc == 0
 
 - name: Wait for SigNoz UI to be ready
-  wait_for:
-    host: 127.0.0.1
-    port: 8080
-    timeout: 180
+  command: docker compose exec -T signoz-signoz-0 wget --spider -q http://localhost:8080/api/v1/health
+  args:
+    chdir: /opt/signoz/pours/deployment
+  become: true
+  become_user: "{{ ops_user }}"
+  register: signoz_check
+  retries: 30
+  delay: 10
+  until: signoz_check.rc == 0
 
 - name: Wait for Uptime Kuma to be ready
-  wait_for:
-    host: 127.0.0.1
-    port: "{{ uptime_kuma_port }}"
-    timeout: 60
+  command: docker compose exec -T uptime-kuma wget --spider -q http://localhost:{{ uptime_kuma_port }}
+  args:
+    chdir: /opt/signoz/pours/deployment
+  become: true
+  become_user: "{{ ops_user }}"
+  register: uptime_check
+  retries: 30
+  delay: 10
+  until: uptime_check.rc == 0

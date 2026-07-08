@@ -67,7 +67,7 @@ services:
   # OpenTelemetry Collector (Ingester)
   # ============================================
   otel-collector:
-    image: signoz/signoz-otel-collector:{{ signoz_version }}
+    image: signoz/signoz-otel-collector:latest
     container_name: otel-collector
     command: ["--config=/etc/otel-collector-config.yaml"]
     ports:

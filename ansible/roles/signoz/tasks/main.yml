@@ -63,6 +63,17 @@
   become_user: "{{ ops_user }}"
 
 # ============================================
+# Deploy additional services (Traefik + Uptime Kuma)
+# ============================================
+- name: Deploy additional services
+  template:
+    src: additional-services.yml.j2
+    dest: /opt/signoz/pours/deployment/additional-services.yml
+    owner: "{{ ops_user }}"
+    group: "{{ ops_user }}"
+    mode: "0644"
+
+# ============================================
 # Merge compose files using Python
 # ============================================
 - name: Merge docker-compose files

@@ -54,7 +54,7 @@ jobs:
           postgres_db: "signoz"
           postgres_user: "signoz"
           postgres_password: "${{ secrets.POSTGRES_PASSWORD }}"
-          traefik_version: "v3.0"
+          traefik_version: "v3.2"
           uptime_kuma_version: "2.4.0"
           uptime_kuma_domain: "${{ secrets.UPTIME_KUMA_DOMAIN }}"
           uptime_kuma_port: 3001

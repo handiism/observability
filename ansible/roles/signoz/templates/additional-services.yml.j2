@@ -3,7 +3,7 @@ services:
   # Traefik - Reverse Proxy & SSL
   # ============================================
   traefik:
-    image: traefik:{{ traefik_version }}
+    image: traefik:v3.2
     container_name: traefik
     command:
       - "--api.dashboard=true"

@@ -35,7 +35,7 @@ postgres_password: "{{ lookup('env', 'POSTGRES_PASSWORD') | default(omit, true) 
 # ============================================
 # Traefik Configuration
 # ============================================
-traefik_version: "v3.0"
+traefik_version: "v3.2"
 
 # ============================================
 # Uptime Kuma Configuration

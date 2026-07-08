@@ -20,6 +20,14 @@
     state: present
 
 # ============================================
+# Install Python YAML library
+# ============================================
+- name: Install PyYAML
+  pip:
+    name: pyyaml
+    state: present
+
+# ============================================
 # Create directories for SigNoz
 # ============================================
 - name: Create SigNoz directory structure
@@ -55,31 +63,37 @@
   become_user: "{{ ops_user }}"
 
 # ============================================
-# Deploy additional services (Traefik + Uptime Kuma)
-# ============================================
-- name: Deploy additional services
-  template:
-    src: additional-services.yml.j2
-    dest: /opt/signoz/pours/deployment/additional-services.yml
-    owner: "{{ ops_user }}"
-    group: "{{ ops_user }}"
-    mode: "0644"
-
-# ============================================
-# Merge compose files
+# Merge compose files using Python
 # ============================================
 - name: Merge docker-compose files
   shell: |
-    cd /opt/signoz/pours/deployment
-    cat compose.yaml additional-services.yml > merged-compose.yml
-    mv merged-compose.yml compose.yaml
+    python3 -c "
+    import yaml
+    import sys
+
+    with open('compose.yaml', 'r') as f:
+        main = yaml.safe_load(f)
+
+    with open('additional-services.yml', 'r') as f:
+        additional = yaml.safe_load(f)
+
+    if 'services' in additional:
+        main.setdefault('services', {}).update(additional['services'])
+    if 'volumes' in additional:
+        main.setdefault('volumes', {}).update(additional['volumes'])
+    if 'networks' in additional:
+        main.setdefault('networks', {}).update(additional['networks'])
+
+    with open('compose.yaml', 'w') as f:
+        yaml.dump(main, f, default_flow_style=False, sort_keys=False)
+    "
   args:
-    executable: /bin/bash
+    chdir: /opt/signoz/pours/deployment
   become: true
   become_user: "{{ ops_user }}"
 
 # ============================================
-# Deploy SigNoz UI labels for Traefik
+# Add Traefik labels to SigNoz service
 # ============================================
 - name: Add Traefik labels to SigNoz service
   lineinfile:
@@ -87,11 +101,11 @@
     insertafter: "container_name: signoz-signoz-0"
     line: |
       labels:
-        - "traefik.enable=true"
-        - "traefik.http.routers.signoz.rule=Host(`{{ signoz_domain }}`)"
-        - "traefik.http.routers.signoz.entrypoints=websecure"
-        - "traefik.http.routers.signoz.tls.certresolver=letsencrypt"
-        - "traefik.http.services.signoz.loadbalancer.server.port=8080"
+        traefik.enable: "true"
+        traefik.http.routers.signoz.rule: "Host(`{{ signoz_domain }}`)"
+        traefik.http.routers.signoz.entrypoints: websecure
+        traefik.http.routers.signoz.tls.certresolver: letsencrypt
+        traefik.http.services.signoz.loadbalancer.server.port: "8080"
   become: true
   become_user: "{{ ops_user }}"
 

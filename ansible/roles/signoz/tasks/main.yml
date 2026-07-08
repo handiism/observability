@@ -164,7 +164,7 @@
   until: signoz_check.rc == 0
 
 - name: Wait for Uptime Kuma to be ready
-  command: docker compose ps --format '{{.Status}}' uptime-kuma
+  command: docker compose ps uptime-kuma
   args:
     chdir: /opt/signoz/pours/deployment
   become: true

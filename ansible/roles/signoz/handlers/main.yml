@@ -2,20 +2,20 @@
 - name: Restart SigNoz stack
   command: docker compose restart
   args:
-    chdir: /opt/signoz
+    chdir: /opt/signoz/pours/deployment
   become: true
   become_user: "{{ ops_user }}"
 
 - name: Stop SigNoz stack
   command: docker compose down
   args:
-    chdir: /opt/signoz
+    chdir: /opt/signoz/pours/deployment
   become: true
   become_user: "{{ ops_user }}"
 
 - name: Start SigNoz stack
   command: docker compose up -d
   args:
-    chdir: /opt/signoz
+    chdir: /opt/signoz/pours/deployment
   become: true
   become_user: "{{ ops_user }}"

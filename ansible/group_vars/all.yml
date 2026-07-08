@@ -19,17 +19,10 @@ ops_ssh_pubkey: "{{ lookup('env', 'OPS_SSH_PUBKEY') | default('ssh-ed25519 CHANG
 letsencrypt_email: "{{ lookup('env', 'LETSENCRYPT_EMAIL') | default('admin@' + signoz_domain, true) }}"
 
 # ============================================
-# SigNoz Configuration
+# SigNoz Configuration (Foundry manages versions)
 # ============================================
-signoz_version: "v0.132.0"
-signoz_ui_port: 3301
 signoz_grpc_port: 4317
 signoz_http_port: 4318
-
-# ============================================
-# ClickHouse Configuration
-# ============================================
-clickhouse_version: "24.8"
 
 # ============================================
 # PostgreSQL Configuration

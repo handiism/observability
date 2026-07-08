@@ -1,5 +1,25 @@
 ---
 # ============================================
+# Install Foundry
+# ============================================
+- name: Check if Foundry is installed
+  stat:
+    path: "/home/{{ ops_user }}/.local/bin/foundryctl"
+  register: foundry_check
+
+- name: Install Foundry
+  shell: curl -fsSL https://signoz.io/foundry.sh | bash
+  args:
+    creates: "/home/{{ ops_user }}/.local/bin/foundryctl"
+  when: not foundry_check.stat.exists
+
+- name: Add Foundry to PATH
+  lineinfile:
+    path: "/home/{{ ops_user }}/.bashrc"
+    line: 'export PATH="/home/{{ ops_user }}/.local/bin:$PATH"'
+    state: present
+
+# ============================================
 # Create directories for SigNoz
 # ============================================
 - name: Create SigNoz directory structure
@@ -11,59 +31,77 @@
     mode: "0755"
   loop:
     - /opt/signoz
-    - /opt/signoz/data
-    - /opt/signoz/data/clickhouse
-    - /opt/signoz/data/postgres
     - /opt/signoz/configs
 
 # ============================================
-# Deploy SigNoz Docker Compose
+# Deploy Foundry casting.yaml
 # ============================================
-- name: Deploy Docker Compose file
+- name: Deploy casting.yaml
   template:
-    src: docker-compose.yml.j2
-    dest: /opt/signoz/docker-compose.yml
+    src: casting.yaml.j2
+    dest: /opt/signoz/casting.yaml
     owner: "{{ ops_user }}"
     group: "{{ ops_user }}"
     mode: "0644"
 
 # ============================================
-# Deploy ClickHouse Configuration
+# Generate docker-compose with Foundry
 # ============================================
-- name: Deploy ClickHouse config
+- name: Generate docker-compose with Foundry
+  command: /home/{{ ops_user }}/.local/bin/foundryctl forge -f casting.yaml
+  args:
+    chdir: /opt/signoz
+  become: true
+  become_user: "{{ ops_user }}"
+
+# ============================================
+# Deploy additional services (Traefik + Uptime Kuma)
+# ============================================
+- name: Deploy additional services
   template:
-    src: clickhouse-config.xml.j2
-    dest: /opt/signoz/configs/clickhouse-config.xml
+    src: additional-services.yml.j2
+    dest: /opt/signoz/pours/deployment/additional-services.yml
     owner: "{{ ops_user }}"
     group: "{{ ops_user }}"
     mode: "0644"
 
-- name: Deploy ClickHouse init script
-  template:
-    src: clickhouse-init.sql.j2
-    dest: /opt/signoz/configs/clickhouse-init.sql
-    owner: "{{ ops_user }}"
-    group: "{{ ops_user }}"
-    mode: "0644"
+# ============================================
+# Merge compose files
+# ============================================
+- name: Merge docker-compose files
+  shell: |
+    cd /opt/signoz/pours/deployment
+    cat compose.yaml additional-services.yml > merged-compose.yml
+    mv merged-compose.yml compose.yaml
+  args:
+    executable: /bin/bash
+  become: true
+  become_user: "{{ ops_user }}"
 
 # ============================================
-# Deploy OTel Collector Configuration
+# Deploy SigNoz UI labels for Traefik
 # ============================================
-- name: Deploy OTel Collector config
-  template:
-    src: otel-collector-config.yaml.j2
-    dest: /opt/signoz/configs/otel-collector-config.yaml
-    owner: "{{ ops_user }}"
-    group: "{{ ops_user }}"
-    mode: "0644"
+- name: Add Traefik labels to SigNoz service
+  lineinfile:
+    path: /opt/signoz/pours/deployment/compose.yaml
+    insertafter: "container_name: signoz-signoz-0"
+    line: |
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.signoz.rule=Host(`{{ signoz_domain }}`)"
+        - "traefik.http.routers.signoz.entrypoints=websecure"
+        - "traefik.http.routers.signoz.tls.certresolver=letsencrypt"
+        - "traefik.http.services.signoz.loadbalancer.server.port=8080"
+  become: true
+  become_user: "{{ ops_user }}"
 
 # ============================================
 # Start SigNoz Stack
 # ============================================
-- name: Pull and start SigNoz stack
+- name: Start SigNoz stack
   command: docker compose up -d
   args:
-    chdir: /opt/signoz
+    chdir: /opt/signoz/pours/deployment
   become: true
   become_user: "{{ ops_user }}"
 
@@ -71,13 +109,13 @@
   wait_for:
     host: 127.0.0.1
     port: 8123
-    timeout: 60
+    timeout: 120
 
 - name: Wait for SigNoz UI to be ready
   wait_for:
     host: 127.0.0.1
-    port: "{{ signoz_ui_port }}"
-    timeout: 120
+    port: 8080
+    timeout: 180
 
 - name: Wait for Uptime Kuma to be ready
   wait_for:

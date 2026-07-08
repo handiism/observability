@@ -1,0 +1,91 @@
+name: Deploy SigNoz
+
+on:
+  push:
+    branches: [main]
+    paths: ['ansible/**']
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Deployment environment"
+        required: true
+        default: "production"
+        type: choice
+        options:
+          - production
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Ansible
+        run: pip install ansible==9.6.0
+
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+      - name: Configure Ansible Variables
+        run: |
+          mkdir -p ansible/group_vars
+          printf '%s\n' \
+            "signoz_domain: \"${{ secrets.SIGNOZ_DOMAIN }}\"" \
+            "vps_timezone: \"Asia/Jakarta\"" \
+            "ops_user: \"ops\"" \
+            "ops_ssh_pubkey: \"${{ secrets.OPS_SSH_PUBKEY }}\"" \
+            "letsencrypt_email: \"${{ secrets.LETSENCRYPT_EMAIL }}\"" \
+            "signoz_version: \"0.63.0\"" \
+            "signoz_ui_port: 3301" \
+            "signoz_grpc_port: 4317" \
+            "signoz_http_port: 4318" \
+            "clickhouse_version: \"24.8\"" \
+            "postgres_version: \"16\"" \
+            "traefik_version: \"v3.0\"" \
+            "uptime_kuma_version: \"1.21\"" \
+            "uptime_kuma_subdomain: \"uptime\"" \
+            "uptime_kuma_port: 3001" \
+            "postgres_db: \"signoz\"" \
+            "postgres_user: \"signoz\"" \
+            "postgres_password: \"${{ secrets.POSTGRES_PASSWORD }}\"" \
+            "retention_logs_days: 15" \
+            "retention_traces_days: 15" \
+            "retention_metrics_days: 30" \
+            > ansible/group_vars/all.yml
+
+      - name: Configure Inventory
+        run: |
+          printf '%s\n' \
+            "all:" \
+            "  hosts:" \
+            "    signoz-vps:" \
+            "      ansible_host: \"${{ secrets.VPS_HOST }}\"" \
+            "      ansible_user: root" \
+            "      ansible_python_interpreter: /usr/bin/python3" \
+            "  vars:" \
+            "    ansible_ssh_private_key_file: \"~/.ssh/id_ed25519\"" \
+            "    ansible_ssh_common_args: \"-o StrictHostKeyChecking=no\"" \
+            > ansible/inventory/production.yml
+
+      - name: Run Ansible Playbook
+        run: |
+          cd ansible
+          ansible-playbook -i inventory/production.yml site.yml -v
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: "False"
+
+      - name: Verify Deployment
+        run: |
+          ssh -o StrictHostKeyChecking=no ops@${{ secrets.VPS_HOST }} "docker ps --format 'table {{.Names}}\t{{.Status}}'"

@@ -1,0 +1,10 @@
+---
+all:
+  hosts:
+    signoz-vps:
+      ansible_host: "{{ lookup('env', 'VPS_HOST') | default('CHANGE_ME_VPS_IP', true) }}"
+      ansible_user: root
+      ansible_python_interpreter: /usr/bin/python3
+  vars:
+    ansible_ssh_private_key_file: "{{ lookup('env', 'SSH_KEY_PATH') | default('~/.ssh/id_ed25519', true) }}"
+    ansible_ssh_common_args: "-o StrictHostKeyChecking=no"

@@ -1,0 +1,86 @@
+---
+# ============================================
+# Create directories for SigNoz
+# ============================================
+- name: Create SigNoz directory structure
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ ops_user }}"
+    group: "{{ ops_user }}"
+    mode: "0755"
+  loop:
+    - /opt/signoz
+    - /opt/signoz/data
+    - /opt/signoz/data/clickhouse
+    - /opt/signoz/data/postgres
+    - /opt/signoz/configs
+
+# ============================================
+# Deploy SigNoz Docker Compose
+# ============================================
+- name: Deploy Docker Compose file
+  template:
+    src: docker-compose.yml.j2
+    dest: /opt/signoz/docker-compose.yml
+    owner: "{{ ops_user }}"
+    group: "{{ ops_user }}"
+    mode: "0644"
+
+# ============================================
+# Deploy ClickHouse Configuration
+# ============================================
+- name: Deploy ClickHouse config
+  template:
+    src: clickhouse-config.xml.j2
+    dest: /opt/signoz/configs/clickhouse-config.xml
+    owner: "{{ ops_user }}"
+    group: "{{ ops_user }}"
+    mode: "0644"
+
+- name: Deploy ClickHouse init script
+  template:
+    src: clickhouse-init.sql.j2
+    dest: /opt/signoz/configs/clickhouse-init.sql
+    owner: "{{ ops_user }}"
+    group: "{{ ops_user }}"
+    mode: "0644"
+
+# ============================================
+# Deploy OTel Collector Configuration
+# ============================================
+- name: Deploy OTel Collector config
+  template:
+    src: otel-collector-config.yaml.j2
+    dest: /opt/signoz/configs/otel-collector-config.yaml
+    owner: "{{ ops_user }}"
+    group: "{{ ops_user }}"
+    mode: "0644"
+
+# ============================================
+# Start SigNoz Stack
+# ============================================
+- name: Pull and start SigNoz stack
+  command: docker compose up -d
+  args:
+    chdir: /opt/signoz
+  become: true
+  become_user: "{{ ops_user }}"
+
+- name: Wait for ClickHouse to be ready
+  wait_for:
+    host: 127.0.0.1
+    port: 8123
+    timeout: 60
+
+- name: Wait for SigNoz UI to be ready
+  wait_for:
+    host: 127.0.0.1
+    port: "{{ signoz_ui_port }}"
+    timeout: 120
+
+- name: Wait for Uptime Kuma to be ready
+  wait_for:
+    host: 127.0.0.1
+    port: "{{ uptime_kuma_port }}"
+    timeout: 60

@@ -1,0 +1,73 @@
+---
+# ============================================
+# SigNoz Observability Platform - Master Playbook
+# ============================================
+# Usage:
+#   ansible-playbook -i inventory/production.yml site.yml
+#
+# Prerequisites:
+#   1. Update inventory/production.yml with VPS IP
+#   2. Update group_vars/all.yml with:
+#      - signoz_domain
+#      - ops_ssh_pubkey
+#      - letsencrypt_email
+#   3. Ensure SSH key is accessible
+# ============================================
+
+- name: Provision SigNoz Observability Platform
+  hosts: all
+  become: true
+  gather_facts: true
+
+  pre_tasks:
+    - name: Display deployment info
+      debug:
+        msg: |
+          ============================================
+          Deploying SigNoz Observability Platform
+          ============================================
+          Target: {{ ansible_host }}
+          Domain: {{ signoz_domain }}
+          User: {{ ops_user }}
+          Timezone: {{ vps_timezone }}
+          SSL: Let's Encrypt via Traefik
+          ============================================
+
+  roles:
+    - role: common
+      tags: ['common', 'setup']
+
+    - role: signoz
+      tags: ['signoz', 'monitoring']
+
+  post_tasks:
+    - name: Display completion message
+      debug:
+        msg: |
+          ============================================
+          Deployment Complete!
+          ============================================
+          
+          DNS Configuration Required:
+          - {{ signoz_domain }} → {{ ansible_host }}
+          - {{ uptime_kuma_subdomain }}.{{ signoz_domain }} → {{ ansible_host }}
+          
+          Services:
+          - SigNoz UI: https://{{ signoz_domain }}
+          - Uptime Kuma: https://{{ uptime_kuma_subdomain }}.{{ signoz_domain }}
+          - OTLP gRPC: {{ ansible_host }}:{{ signoz_grpc_port }}
+          - OTLP HTTP: {{ ansible_host }}:{{ signoz_http_port }}
+          
+          Post-Deployment:
+          1. Configure DNS records
+          2. Access SigNoz UI → create admin account
+          3. Access Uptime Kuma → setup monitors + Telegram notifications
+          
+          Retention:
+          - Logs: {{ retention_logs_days }} days
+          - Traces: {{ retention_traces_days }} days
+          - Metrics: {{ retention_metrics_days }} days
+          
+          SSL: Auto-provisioned via Let's Encrypt (Traefik)
+          ============================================
+      tags: ['always']

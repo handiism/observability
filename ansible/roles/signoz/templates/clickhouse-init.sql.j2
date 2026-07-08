@@ -1,0 +1,60 @@
+-- Create Signoz database
+CREATE DATABASE IF NOT EXISTS signoz;
+
+-- Set retention for logs ({{ retention_logs_days }} days)
+CREATE TABLE IF NOT EXISTS signoz.logs (
+    _time DateTime,
+    _trace_id String,
+    _span_id String,
+    _trace_flags UInt32,
+    _service_name String,
+    _severity_text String,
+    _severity_number UInt32,
+    _body String,
+    _attributes_string Map(String, String),
+    _attributes_number Map(String, Float64),
+    _resources_string Map(String, String)
+)
+ENGINE = MergeTree()
+PARTITION BY toYYYYMM(_time)
+ORDER BY (_time, _service_name)
+TTL toDateTime(_time) + INTERVAL {{ retention_logs_days }} DAY
+SETTINGS index_granularity = 8192;
+
+-- Set retention for traces ({{ retention_traces_days }} days)
+CREATE TABLE IF NOT EXISTS signoz.traces (
+    _time DateTime,
+    _trace_id String,
+    _span_id String,
+    _parent_span_id String,
+    _service_name String,
+    _name String,
+    _kind UInt32,
+    _duration_ns UInt64,
+    _status_code UInt32,
+    _status_message String,
+    _attributes_string Map(String, String),
+    _attributes_number Map(String, Float64),
+    _resources_string Map(String, String)
+)
+ENGINE = MergeTree()
+PARTITION BY toYYYYMM(_time)
+ORDER BY (_time, _service_name)
+TTL toDateTime(_time) + INTERVAL {{ retention_traces_days }} DAY
+SETTINGS index_granularity = 8192;
+
+-- Set retention for metrics ({{ retention_metrics_days }} days)
+CREATE TABLE IF NOT EXISTS signoz.metrics (
+    _time DateTime,
+    _service_name String,
+    _metric_name String,
+    _metric_type String,
+    _metric_value Float64,
+    _attributes_string Map(String, String),
+    _resources_string Map(String, String)
+)
+ENGINE = MergeTree()
+PARTITION BY toYYYYMM(_time)
+ORDER BY (_time, _service_name, _metric_name)
+TTL toDateTime(_time) + INTERVAL {{ retention_metrics_days }} DAY
+SETTINGS index_granularity = 8192;

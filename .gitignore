@@ -1,0 +1,37 @@
+# ============================================
+# Git Ignore for SigNoz Observability Platform
+# ============================================
+
+# Environment files (contain secrets)
+.env
+*.env.local
+*.env.production
+
+# Ansible
+*.retry
+ansible/**/*.retry
+
+# SSH keys
+*.pem
+*.key
+id_*
+id_*.pub
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/

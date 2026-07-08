@@ -1,0 +1,207 @@
+---
+# ============================================
+# Pre-flight Validation
+# ============================================
+- name: Validate SSH public key is configured
+  ansible.builtin.fail:
+    msg: |
+      ops_ssh_pubkey is not configured!
+      Set OPS_SSH_PUBKEY environment variable or update group_vars/all.yml
+      This prevents VPS lockout when root login is disabled.
+  when: ops_ssh_pubkey == 'ssh-ed25519 CHANGE_ME_YOUR_PUBLIC_KEY'
+
+- name: Validate PostgreSQL password is configured
+  ansible.builtin.fail:
+    msg: |
+      postgres_password is not configured!
+      Set POSTGRES_PASSWORD environment variable or update group_vars/all.yml
+  when: postgres_password is not defined or postgres_password == '' or postgres_password == 'omit'
+
+# ============================================
+# System Updates
+# ============================================
+- name: Update apt cache
+  apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Upgrade all packages
+  apt:
+    upgrade: dist
+    autoremove: true
+
+# ============================================
+# Create ops User (Superuser)
+# ============================================
+- name: Create ops user
+  user:
+    name: "{{ ops_user }}"
+    shell: /bin/bash
+    groups: sudo
+    append: true
+    create_home: true
+
+- name: Set NOPASSWD sudo for ops user
+  lineinfile:
+    path: "/etc/sudoers.d/{{ ops_user }}"
+    line: "{{ ops_user }} ALL=(ALL) NOPASSWD:ALL"
+    state: present
+    mode: "0440"
+    validate: "visudo -cf %s"
+
+- name: Ensure .ssh directory exists for ops user
+  file:
+    path: "/home/{{ ops_user }}/.ssh"
+    state: directory
+    owner: "{{ ops_user }}"
+    group: "{{ ops_user }}"
+    mode: "0700"
+
+- name: Deploy SSH public key for ops user
+  authorized_key:
+    user: "{{ ops_user }}"
+    key: "{{ ops_ssh_pubkey }}"
+    state: present
+
+# ============================================
+# SSH Hardening
+# ============================================
+- name: Disable root login
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^#?PermitRootLogin"
+    line: "PermitRootLogin no"
+  notify: Restart sshd
+
+- name: Disable password authentication
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^#?PasswordAuthentication"
+    line: "PasswordAuthentication no"
+  notify: Restart sshd
+
+- name: Enable public key authentication
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^#?PubkeyAuthentication"
+    line: "PubkeyAuthentication yes"
+  notify: Restart sshd
+
+# ============================================
+# Timezone
+# ============================================
+- name: Set timezone
+  timezone:
+    name: "{{ vps_timezone }}"
+
+# ============================================
+# Install Docker
+# ============================================
+- name: Install dependencies for Docker
+  apt:
+    name:
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+      - python3-pip
+      - python3-docker
+    state: present
+
+- name: Add Docker GPG key
+  ansible.builtin.get_url:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    dest: /etc/apt/keyrings/docker.gpg
+    mode: "0644"
+
+- name: Add Docker repository
+  ansible.builtin.apt_repository:
+    repo: "deb [arch={{ ansible_architecture | replace('x86_64', 'amd64') | replace('aarch64', 'arm64') }} signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+    state: present
+
+- name: Install Docker CE
+  apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-compose-plugin
+    state: present
+
+- name: Ensure Docker is started and enabled
+  systemd:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Add ops user to docker group
+  user:
+    name: "{{ ops_user }}"
+    groups: docker
+    append: true
+
+# ============================================
+# UFW Firewall
+# ============================================
+- name: Install UFW
+  apt:
+    name: ufw
+    state: present
+
+- name: Set UFW default deny incoming
+  ufw:
+    direction: incoming
+    policy: deny
+
+- name: Set UFW default allow outgoing
+  ufw:
+    direction: outgoing
+    policy: allow
+
+- name: Allow SSH
+  ufw:
+    rule: allow
+    port: "22"
+    proto: tcp
+
+- name: Allow HTTP
+  ufw:
+    rule: allow
+    port: "80"
+    proto: tcp
+
+- name: Allow HTTPS
+  ufw:
+    rule: allow
+    port: "443"
+    proto: tcp
+
+- name: Allow OTLP gRPC
+  ufw:
+    rule: allow
+    port: "{{ signoz_grpc_port }}"
+    proto: tcp
+
+- name: Allow OTLP HTTP
+  ufw:
+    rule: allow
+    port: "{{ signoz_http_port }}"
+    proto: tcp
+
+- name: Enable UFW
+  ufw:
+    state: enabled
+
+# ============================================
+# Disable Swap
+# ============================================
+- name: Disable swap
+  command: swapoff -a
+  when: ansible_swaptotal_mb > 0
+
+- name: Remove swap from fstab
+  lineinfile:
+    path: /etc/fstab
+    regexp: '\sswap\s'
+    state: absent
+  when: ansible_swaptotal_mb > 0

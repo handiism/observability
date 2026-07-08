@@ -23,8 +23,8 @@
 # Install Python YAML library
 # ============================================
 - name: Install PyYAML
-  pip:
-    name: pyyaml
+  apt:
+    name: python3-yaml
     state: present
 
 # ============================================

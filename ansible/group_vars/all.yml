@@ -48,7 +48,7 @@ traefik_version: "v3.0"
 # Uptime Kuma Configuration
 # ============================================
 uptime_kuma_version: "1.21"
-uptime_kuma_subdomain: "{{ lookup('env', 'UPTIME_KUMA_SUBDOMAIN') | default('uptime', true) }}"
+uptime_kuma_domain: "{{ lookup('env', 'UPTIME_KUMA_DOMAIN') | default('uptime.' + signoz_domain, true) }}"
 uptime_kuma_port: 3001
 
 # ============================================

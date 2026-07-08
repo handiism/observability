@@ -92,7 +92,7 @@ Add the following secrets:
 | `SSH_PRIVATE_KEY` | Private key for SSH access | `-----BEGIN OPENSSH PRIVATE KEY-----...` |
 | `VPS_HOST` | VPS IP address | `123.45.67.89` |
 | `SIGNOZ_DOMAIN` | Domain for SigNoz UI | `signoz.example.com` |
-| `UPTIME_KUMA_SUBDOMAIN` | Subdomain for Uptime Kuma | `uptime` |
+| `UPTIME_KUMA_DOMAIN` | Domain for Uptime Kuma | `uptime.example.com` |
 | `OPS_SSH_PUBKEY` | SSH public key for ops user | `ssh-ed25519 AAAA...` |
 | `LETSENCRYPT_EMAIL` | Email for Let's Encrypt | `admin@example.com` |
 | `POSTGRES_PASSWORD` | PostgreSQL password | `your-secure-password` |

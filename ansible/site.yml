@@ -50,11 +50,11 @@
           
           DNS Configuration Required:
           - {{ signoz_domain }} → {{ ansible_host }}
-          - {{ uptime_kuma_subdomain }}.{{ signoz_domain }} → {{ ansible_host }}
+          - {{ uptime_kuma_domain }} → {{ ansible_host }}
           
           Services:
           - SigNoz UI: https://{{ signoz_domain }}
-          - Uptime Kuma: https://{{ uptime_kuma_subdomain }}.{{ signoz_domain }}
+          - Uptime Kuma: https://{{ uptime_kuma_domain }}
           - OTLP gRPC: {{ ansible_host }}:{{ signoz_grpc_port }}
           - OTLP HTTP: {{ ansible_host }}:{{ signoz_http_port }}
           

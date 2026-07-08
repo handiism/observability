@@ -148,7 +148,7 @@ services:
     container_name: uptime-kuma
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.uptime.rule=Host(`{{ uptime_kuma_subdomain }}.{{ signoz_domain }}`)"
+      - "traefik.http.routers.uptime.rule=Host(`{{ uptime_kuma_domain }}`)"
       - "traefik.http.routers.uptime.entrypoints=websecure"
       - "traefik.http.routers.uptime.tls.certresolver=letsencrypt"
       - "traefik.http.services.uptime.loadbalancer.server.port={{ uptime_kuma_port }}"

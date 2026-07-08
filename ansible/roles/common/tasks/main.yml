@@ -20,6 +20,12 @@
 # ============================================
 # System Updates
 # ============================================
+- name: Wait for apt lock to be released
+  wait_for:
+    path: /var/lib/dpkg/lock-frontend
+    timeout: 300
+  ignore_errors: true
+
 - name: Update apt cache
   apt:
     update_cache: true
@@ -29,6 +35,8 @@
   apt:
     upgrade: dist
     autoremove: true
+  environment:
+    DEBIAN_FRONTEND: noninteractive
 
 # ============================================
 # Create ops User (Superuser)

@@ -41,12 +41,21 @@
     append: true
     create_home: true
 
+- name: Ensure sudoers.d directory exists
+  file:
+    path: /etc/sudoers.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
 - name: Set NOPASSWD sudo for ops user
   lineinfile:
     path: "/etc/sudoers.d/{{ ops_user }}"
     line: "{{ ops_user }} ALL=(ALL) NOPASSWD:ALL"
     state: present
     mode: "0440"
+    create: true
     validate: "visudo -cf %s"
 
 - name: Ensure .ssh directory exists for ops user

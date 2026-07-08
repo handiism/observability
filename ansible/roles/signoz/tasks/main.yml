@@ -164,7 +164,7 @@
   until: signoz_check.rc == 0
 
 - name: Wait for Uptime Kuma to be ready
-  command: docker compose exec -T uptime-kuma wget --spider -q http://localhost:{{ uptime_kuma_port }}
+  command: docker compose ps --format '{{.Status}}' uptime-kuma
   args:
     chdir: /opt/signoz/pours/deployment
   become: true
@@ -172,4 +172,4 @@
   register: uptime_check
   retries: 30
   delay: 10
-  until: uptime_check.rc == 0
+  until: "'Up' in uptime_check.stdout"

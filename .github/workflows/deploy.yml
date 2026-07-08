@@ -30,7 +30,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install Ansible
-        run: pip install ansible==9.6.0
+        run: pip install ansible==9.13.0
 
       - name: Setup SSH Key
         run: |

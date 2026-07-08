@@ -54,7 +54,7 @@ jobs:
             "clickhouse_version: \"24.8\"" \
             "postgres_version: \"16\"" \
             "traefik_version: \"v3.0\"" \
-            "uptime_kuma_version: \"1.21\"" \
+            "uptime_kuma_version: \"2.4.0\"" \
             "uptime_kuma_domain: \"${{ secrets.UPTIME_KUMA_DOMAIN }}\"" \
             "uptime_kuma_port: 3001" \
             "postgres_db: \"signoz\"" \

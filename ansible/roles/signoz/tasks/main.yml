@@ -154,6 +154,34 @@
   become_user: "{{ ops_user }}"
 
 # ============================================
+# Add Traefik labels to MCP service
+# ============================================
+- name: Add Traefik labels to MCP service
+  shell: |
+    python3 -c "
+    import yaml
+
+    with open('compose.yaml', 'r') as f:
+        compose = yaml.safe_load(f)
+
+    if 'services' in compose and 'signoz-mcp' in compose['services']:
+        compose['services']['signoz-mcp']['labels'] = {
+            'traefik.enable': 'true',
+            'traefik.http.routers.mcp.rule': 'Host(\`mcp.{{ signoz_domain }}\`)',
+            'traefik.http.routers.mcp.entrypoints': 'websecure',
+            'traefik.http.routers.mcp.tls.certresolver': 'letsencrypt',
+            'traefik.http.services.mcp.loadbalancer.server.port': '8000'
+        }
+
+    with open('compose.yaml', 'w') as f:
+        yaml.dump(compose, f, default_flow_style=False, sort_keys=False)
+    "
+  args:
+    chdir: /opt/signoz/pours/deployment
+  become: true
+  become_user: "{{ ops_user }}"
+
+# ============================================
 # Start SigNoz Stack
 # ============================================
 - name: Start SigNoz stack

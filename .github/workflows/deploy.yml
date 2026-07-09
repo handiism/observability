@@ -14,9 +14,6 @@ on:
         options:
           - production
 
-env:
-  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
-
 jobs:
   deploy:
     name: Deploy to Production
@@ -24,6 +21,11 @@ jobs:
     environment: production
 
     steps:
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
       - name: Checkout code
         uses: actions/checkout@v4
 

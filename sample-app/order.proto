@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package order;
+
+option go_package = "./pb";
+
+service OrderService {
+  rpc ProcessOrder (ProcessOrderRequest) returns (ProcessOrderResponse);
+}
+
+message ProcessOrderRequest {
+  string order_id = 1;
+}
+
+message ProcessOrderResponse {
+  string order_id = 1;
+  string status = 2;
+  string message = 3;
+  string duration = 4;
+}

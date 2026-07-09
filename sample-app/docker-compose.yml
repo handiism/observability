@@ -5,9 +5,12 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-https://otlp.signoz.example.com}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-https://otlp.example.com}
+      - OTEL_EXPORTER_OTLP_PROTOCOL=${OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}
       - OTEL_SERVICE_NAME=api-gateway
       - BACKEND_SERVICE_URL=http://backend-service:8081
+      - BACKEND_PROTOCOL=${BACKEND_PROTOCOL:-http}
+      - BACKEND_GRPC_ADDR=backend-service:50051
     networks:
       - sample-network
 
@@ -16,8 +19,10 @@ services:
     container_name: backend-service
     ports:
       - "8081:8081"
+      - "50051:50051"
     environment:
-      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-https://otlp.signoz.example.com}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-https://otlp.example.com}
+      - OTEL_EXPORTER_OTLP_PROTOCOL=${OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}
       - OTEL_SERVICE_NAME=backend-service
     networks:
       - sample-network

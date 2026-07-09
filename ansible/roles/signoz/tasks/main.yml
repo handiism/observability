@@ -115,13 +115,7 @@
         compose = yaml.safe_load(f)
 
     if 'services' in compose and 'signoz-mcp' in compose['services']:
-        compose['services']['signoz-mcp']['healthcheck'] = {
-            'test': ['CMD-SHELL', 'pgrep -f signoz-mcp || exit 1'],
-            'interval': '30s',
-            'timeout': '10s',
-            'retries': 3,
-            'start_period': '30s'
-        }
+        compose['services']['signoz-mcp'].pop('healthcheck', None)
 
     with open('compose.yaml', 'w') as f:
         yaml.dump(compose, f, default_flow_style=False, sort_keys=False)

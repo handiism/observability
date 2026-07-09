@@ -136,8 +136,8 @@
     with open('compose.yaml', 'r') as f:
         compose = yaml.safe_load(f)
 
-    if 'services' in compose and 'signoz-ingester-1' in compose['services']:
-        compose['services']['signoz-ingester-1']['labels'] = {
+    if 'services' in compose and 'ingester' in compose['services']:
+        compose['services']['ingester']['labels'] = {
             'traefik.enable': 'true',
             'traefik.http.routers.otlp.rule': 'Host(\`otlp.{{ signoz_domain }}\`)',
             'traefik.http.routers.otlp.entrypoints': 'websecure',

@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"time"
 
+	"go.opentelemetry.io/contrib/bridges/otelslog"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -20,7 +21,6 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 	"go.opentelemetry.io/otel/trace"
-	"go.uber.org/zap"
 )
 
 var (
@@ -33,13 +33,13 @@ func main() {
 	ctx := context.Background()
 	shutdown, err := initOTel(ctx)
 	if err != nil {
-		log.Fatalf("Failed to initialize OTel: %v", err)
+		slog.Error("Failed to initialize OTel", "error", err)
+		os.Exit(1)
 	}
 	defer shutdown(ctx)
 
-	// Initialize logger
-	logger, _ := zap.NewProduction()
-	defer logger.Sync()
+	// Configure slog with OTel bridge
+	slog.SetDefault(otelslog.NewLogger("api-gateway"))
 
 	// Create metrics
 	requestCounter, _ := meter.Int64Counter("http.requests.total")
@@ -47,13 +47,13 @@ func main() {
 
 	// HTTP handler
 	http.HandleFunc("/api/orders", func(w http.ResponseWriter, r *http.Request) {
-		_, span := tracer.Start(r.Context(), "handle-order-request")
+		ctx, span := tracer.Start(r.Context(), "handle-order-request")
 		defer span.End()
 
-		// Log request
-		logger.Info("Received order request",
-			zap.String("method", r.Method),
-			zap.String("path", r.URL.Path),
+		// Log request with trace context
+		slog.InfoContext(ctx, "Received order request",
+			slog.String("method", r.Method),
+			slog.String("path", r.URL.Path),
 		)
 
 		// Create metric attributes
@@ -67,18 +67,22 @@ func main() {
 		span.SetAttributes(attribute.String("order.id", orderID))
 
 		// Call backend service
-		resp, err := callBackendService(orderID)
+		resp, err := callBackendService(ctx, orderID)
 		if err != nil {
-			logger.Error("Failed to call backend", zap.Error(err))
+			slog.ErrorContext(ctx, "Failed to call backend",
+				slog.String("error", err.Error()),
+				slog.String("order_id", orderID),
+			)
+			span.SetStatus(2, err.Error())
 			errorCounter.Add(ctx, 1, metric.WithAttributes(attrs...))
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
 		// Log response
-		logger.Info("Order processed",
-			zap.String("order_id", orderID),
-			zap.String("status", resp.Status),
+		slog.InfoContext(ctx, "Order processed",
+			slog.String("order_id", orderID),
+			slog.String("status", resp.Status),
 		)
 
 		requestCounter.Add(ctx, 1, metric.WithAttributes(attrs...))
@@ -104,9 +108,10 @@ func main() {
 		port = "8080"
 	}
 
-	log.Printf("API Gateway starting on port %s", port)
+	slog.Info("API Gateway starting", slog.String("port", port))
 	if err := http.ListenAndServe(":"+port, handler); err != nil {
-		log.Fatalf("Server failed: %v", err)
+		slog.Error("Server failed", "error", err)
+		os.Exit(1)
 	}
 }
 
@@ -169,16 +174,16 @@ type BackendResponse struct {
 	Message string `json:"message"`
 }
 
-func callBackendService(orderID string) (*BackendResponse, error) {
+func callBackendService(ctx context.Context, orderID string) (*BackendResponse, error) {
 	backendURL := os.Getenv("BACKEND_SERVICE_URL")
 	if backendURL == "" {
 		backendURL = "http://backend-service:8081"
 	}
 
-	_, span := tracer.Start(context.Background(), "call-backend-service")
+	ctx, span := tracer.Start(ctx, "call-backend-service")
 	defer span.End()
 
-	req, err := http.NewRequest("POST", backendURL+"/process", nil)
+	req, err := http.NewRequestWithContext(ctx, "POST", backendURL+"/process", nil)
 	if err != nil {
 		return nil, err
 	}

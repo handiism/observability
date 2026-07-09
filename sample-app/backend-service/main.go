@@ -5,13 +5,14 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"time"
 
 	_ "modernc.org/sqlite"
 
+	"go.opentelemetry.io/contrib/bridges/otelslog"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -23,14 +24,12 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 	"go.opentelemetry.io/otel/trace"
-	"go.uber.org/zap"
 )
 
 var (
-	tracer       trace.Tracer
-	meter        metric.Meter
-	db           *sql.DB
-	logger       *zap.Logger
+	tracer trace.Tracer
+	meter  metric.Meter
+	db     *sql.DB
 )
 
 func main() {
@@ -38,17 +37,18 @@ func main() {
 	ctx := context.Background()
 	shutdown, err := initOTel(ctx)
 	if err != nil {
-		log.Fatalf("Failed to initialize OTel: %v", err)
+		slog.Error("Failed to initialize OTel", "error", err)
+		os.Exit(1)
 	}
 	defer shutdown(ctx)
 
-	// Initialize logger
-	logger, _ = zap.NewProduction()
-	defer logger.Sync()
+	// Configure slog with OTel bridge
+	slog.SetDefault(otelslog.NewLogger("backend-service"))
 
 	// Initialize SQLite database
 	if err := initDB(); err != nil {
-		log.Fatalf("Failed to initialize database: %v", err)
+		slog.Error("Failed to initialize database", "error", err)
+		os.Exit(1)
 	}
 	defer db.Close()
 
@@ -58,7 +58,7 @@ func main() {
 
 	// HTTP handler
 	http.HandleFunc("/process", func(w http.ResponseWriter, r *http.Request) {
-		_, span := tracer.Start(r.Context(), "process-order")
+		ctx, span := tracer.Start(r.Context(), "process-order")
 		defer span.End()
 
 		orderID := r.Header.Get("X-Order-ID")
@@ -67,9 +67,9 @@ func main() {
 			return
 		}
 
-		// Log request
-		logger.Info("Processing order",
-			zap.String("order_id", orderID),
+		// Log request with trace context
+		slog.InfoContext(ctx, "Processing order",
+			slog.String("order_id", orderID),
 		)
 
 		span.SetAttributes(attribute.String("order.id", orderID))
@@ -80,8 +80,12 @@ func main() {
 		duration := time.Since(start).Seconds()
 
 		// Store order in database
-		if err := storeOrder(orderID, "processed"); err != nil {
-			logger.Error("Failed to store order", zap.Error(err))
+		if err := storeOrder(ctx, orderID, "processed"); err != nil {
+			slog.ErrorContext(ctx, "Failed to store order",
+				slog.String("error", err.Error()),
+				slog.String("order_id", orderID),
+			)
+			span.SetStatus(2, err.Error())
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -94,10 +98,10 @@ func main() {
 		processCounter.Add(ctx, 1, metric.WithAttributes(attrs...))
 		processingDuration.Record(ctx, duration, metric.WithAttributes(attrs...))
 
-		// Log success
-		logger.Info("Order processed successfully",
-			zap.String("order_id", orderID),
-			zap.Float64("duration_seconds", duration),
+		// Log success with trace context
+		slog.InfoContext(ctx, "Order processed successfully",
+			slog.String("order_id", orderID),
+			slog.Float64("duration_seconds", duration),
 		)
 
 		span.SetAttributes(
@@ -127,9 +131,10 @@ func main() {
 		port = "8081"
 	}
 
-	log.Printf("Backend service starting on port %s", port)
+	slog.Info("Backend service starting", slog.String("port", port))
 	if err := http.ListenAndServe(":"+port, handler); err != nil {
-		log.Fatalf("Server failed: %v", err)
+		slog.Error("Server failed", "error", err)
+		os.Exit(1)
 	}
 }
 
@@ -206,12 +211,12 @@ func initDB() error {
 		return err
 	}
 
-	logger.Info("Database initialized successfully")
+	slog.Info("Database initialized successfully")
 	return nil
 }
 
-func storeOrder(orderID, status string) error {
-	_, span := tracer.Start(context.Background(), "store-order-in-db")
+func storeOrder(ctx context.Context, orderID, status string) error {
+	ctx, span := tracer.Start(ctx, "store-order-in-db")
 	defer span.End()
 
 	span.SetAttributes(
@@ -230,9 +235,9 @@ func storeOrder(orderID, status string) error {
 		return err
 	}
 
-	logger.Info("Order stored in database",
-		zap.String("order_id", orderID),
-		zap.String("status", status),
+	slog.InfoContext(ctx, "Order stored in database",
+		slog.String("order_id", orderID),
+		slog.String("status", status),
 	)
 
 	return nil

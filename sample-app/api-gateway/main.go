@@ -120,14 +120,7 @@ func initOTel(ctx context.Context) (func(context.Context), error) {
 	}
 
 	// Create OTLP metric exporter
-	metricExporter, err := otlptracegrpc.New(ctx,
-		otlptracegrpc.WithInsecure(),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create metric exporter: %w", err)
-	}
-
-	metricExporter2, err := otlpmetricgrpc.New(ctx,
+	metricExporter, err := otlpmetricgrpc.New(ctx,
 		otlpmetricgrpc.WithInsecure(),
 	)
 	if err != nil {
@@ -155,7 +148,7 @@ func initOTel(ctx context.Context) (func(context.Context), error) {
 
 	// Create metric provider
 	mp := sdkmetric.NewMeterProvider(
-		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(metricExporter2)),
+		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(metricExporter)),
 		sdkmetric.WithResource(res),
 	)
 	otel.SetMeterProvider(mp)

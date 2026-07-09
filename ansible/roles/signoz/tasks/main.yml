@@ -126,6 +126,35 @@
   become_user: "{{ ops_user }}"
 
 # ============================================
+# Add Traefik labels to OTel Collector (OTLP)
+# ============================================
+- name: Add Traefik labels to OTel Collector
+  shell: |
+    python3 -c "
+    import yaml
+
+    with open('compose.yaml', 'r') as f:
+        compose = yaml.safe_load(f)
+
+    if 'services' in compose and 'signoz-ingester-1' in compose['services']:
+        compose['services']['signoz-ingester-1']['labels'] = {
+            'traefik.enable': 'true',
+            'traefik.http.routers.otlp.rule': 'Host(\`otlp.{{ signoz_domain }}\`)',
+            'traefik.http.routers.otlp.entrypoints': 'websecure',
+            'traefik.http.routers.otlp.tls.certresolver': 'letsencrypt',
+            'traefik.http.services.otlp.loadbalancer.server.port': '4317',
+            'traefik.http.services.otlp.loadbalancer.server.scheme': 'h2c'
+        }
+
+    with open('compose.yaml', 'w') as f:
+        yaml.dump(compose, f, default_flow_style=False, sort_keys=False)
+    "
+  args:
+    chdir: /opt/signoz/pours/deployment
+  become: true
+  become_user: "{{ ops_user }}"
+
+# ============================================
 # Add Traefik labels to SigNoz service
 # ============================================
 - name: Add Traefik labels to SigNoz service

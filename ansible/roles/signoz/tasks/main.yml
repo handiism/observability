@@ -104,6 +104,34 @@
   become_user: "{{ ops_user }}"
 
 # ============================================
+# Fix MCP healthcheck (container missing wget)
+# ============================================
+- name: Fix MCP healthcheck
+  shell: |
+    python3 -c "
+    import yaml
+
+    with open('compose.yaml', 'r') as f:
+        compose = yaml.safe_load(f)
+
+    if 'services' in compose and 'signoz-mcp' in compose['services']:
+        compose['services']['signoz-mcp']['healthcheck'] = {
+            'test': ['CMD-SHELL', 'python3 -c \"import urllib.request; urllib.request.urlopen(\\\"http://localhost:8000/livez\\\")\"'],
+            'interval': '30s',
+            'timeout': '10s',
+            'retries': 3,
+            'start_period': '30s'
+        }
+
+    with open('compose.yaml', 'w') as f:
+        yaml.dump(compose, f, default_flow_style=False, sort_keys=False)
+    "
+  args:
+    chdir: /opt/signoz/pours/deployment
+  become: true
+  become_user: "{{ ops_user }}"
+
+# ============================================
 # Add Traefik labels to SigNoz service
 # ============================================
 - name: Add Traefik labels to SigNoz service

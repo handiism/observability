@@ -127,7 +127,7 @@ func setupOTelSDK(ctx context.Context) (func(context.Context) error, error) {
 	}
 
 	tracerProvider := sdktrace.NewTracerProvider(
-		sdktrace.WithSyncer(tracerExporter),
+		sdktrace.WithBatcher(tracerExporter),
 		sdktrace.WithResource(res),
 	)
 	shutdownFuncs = append(shutdownFuncs, tracerProvider.Shutdown)

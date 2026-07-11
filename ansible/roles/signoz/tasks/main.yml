@@ -142,8 +142,8 @@
             'traefik.http.routers.otlp.rule': 'Host(\`otlp.{{ signoz_domain }}\`)',
             'traefik.http.routers.otlp.entrypoints': 'websecure',
             'traefik.http.routers.otlp.tls.certresolver': 'letsencrypt',
-            'traefik.http.services.otlp.loadbalancer.server.port': '4317',
-            'traefik.http.services.otlp.loadbalancer.server.scheme': 'h2c'
+            'traefik.http.services.otlp.loadbalancer.server.port': '4318',
+            'traefik.http.services.otlp.loadbalancer.server.scheme': 'http'
         }
 
     with open('compose.yaml', 'w') as f:

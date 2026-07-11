@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 
 	"go.opentelemetry.io/otel"
@@ -21,6 +22,12 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 )
+
+func init() {
+	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
+		fmt.Fprintf(os.Stderr, "OTEL ERROR: %v\n", err)
+	}))
+}
 
 func setupOTelSDK(ctx context.Context) (func(context.Context) error, error) {
 	var shutdownFuncs []func(context.Context) error
@@ -120,7 +127,7 @@ func setupOTelSDK(ctx context.Context) (func(context.Context) error, error) {
 	}
 
 	tracerProvider := sdktrace.NewTracerProvider(
-		sdktrace.WithBatcher(tracerExporter),
+		sdktrace.WithSyncer(tracerExporter),
 		sdktrace.WithResource(res),
 	)
 	shutdownFuncs = append(shutdownFuncs, tracerProvider.Shutdown)

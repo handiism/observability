@@ -55,6 +55,7 @@ jobs:
           letsencrypt_email: "${{ secrets.LETSENCRYPT_EMAIL }}"
           signoz_grpc_port: 4317
           signoz_http_port: 4318
+          otlp_domain: "otlp.${{ secrets.SIGNOZ_DOMAIN }}"
           postgres_version: "16"
           postgres_db: "signoz"
           postgres_user: "signoz"

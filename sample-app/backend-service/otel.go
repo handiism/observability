@@ -57,7 +57,7 @@ func setupOTelSDK(ctx context.Context) (func(context.Context) error, error) {
 
 	endpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
 	if endpoint == "" {
-		endpoint = "https://otlp.example.com"
+		endpoint = "https://otlp.signoz.example.com"
 	}
 
 	protocol := os.Getenv("OTEL_EXPORTER_OTLP_PROTOCOL")
@@ -111,7 +111,7 @@ func setupOTelSDK(ctx context.Context) (func(context.Context) error, error) {
 		}
 
 		logExporter, err = otlploghttp.New(ctx,
-			otlploghttp.WithEndpointURL(endpoint),
+			otlploghttp.WithEndpointURL(endpoint + "/v1/logs"),
 		)
 		if err != nil {
 			handleErr(err)

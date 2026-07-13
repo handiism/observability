@@ -33,8 +33,8 @@ otlp_domain: "{{ lookup('env', 'OTLP_DOMAIN') | default('otlp.' + signoz_domain,
 # PostgreSQL Configuration
 # ============================================
 postgres_version: "16"
-postgres_db: "signoz"
-postgres_user: "signoz"
+postgres_db: "{{ lookup('env', 'POSTGRES_DB') | default('signoz', true) }}"
+postgres_user: "{{ lookup('env', 'POSTGRES_USER') | default('signoz', true) }}"
 postgres_password: "{{ lookup('env', 'POSTGRES_PASSWORD') | default(omit, true) }}"
 
 # ============================================

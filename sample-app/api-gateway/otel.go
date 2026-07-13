@@ -64,7 +64,7 @@ func setupOTelSDK(ctx context.Context) (func(context.Context) error, error) {
 
 	endpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
 	if endpoint == "" {
-		endpoint = "https://otlp.signoz.example.com"
+		endpoint = "http://localhost:4317"
 	}
 
 	protocol := os.Getenv("OTEL_EXPORTER_OTLP_PROTOCOL")

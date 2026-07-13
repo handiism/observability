@@ -64,7 +64,7 @@ curl http://localhost:8080/api/health
 
 ### 3. View in SigNoz
 
-- Open SigNoz UI: https://signoz.example.com
+- Open SigNoz UI: http://localhost:3301
 - View traces: Traces → Search
 - View metrics: Metrics → Explorer
 - View logs: Logs → Search

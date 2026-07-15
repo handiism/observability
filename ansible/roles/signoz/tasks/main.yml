@@ -252,3 +252,9 @@
   retries: 30
   delay: 10
   until: "'Up' in uptime_check.stdout"
+
+# ============================================
+# ClickHouse Retention Policy
+# ============================================
+- name: Apply ClickHouse retention TTLs
+  include_tasks: clickhouse-retention.yml

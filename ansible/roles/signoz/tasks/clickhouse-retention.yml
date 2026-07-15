@@ -1,0 +1,157 @@
+---
+# ============================================
+# Set ClickHouse TTL retention
+# ============================================
+- name: Get ClickHouse container name
+  shell: docker compose -f /opt/signoz/pours/deployment/compose.yaml ps -q signoz-telemetrystore-clickhouse-0-0
+  args:
+    chdir: /opt/signoz/pours/deployment
+  become: true
+  become_user: "{{ ops_user }}"
+  register: ch_container
+  changed_when: false
+
+- name: Set retention on logs tables
+  shell: |
+    docker exec {{ ch_container.stdout }} clickhouse-client --query "
+      ALTER TABLE signoz_logs.logs_v2
+      MODIFY TTL toDateTime(timestamp / 1000000000) + toIntervalDay({{ retention_logs_days }}) DELETE;
+    "
+  become: true
+  become_user: "{{ ops_user }}"
+  changed_when: false
+
+- name: Set retention on logs resource tables
+  shell: |
+    docker exec {{ ch_container.stdout }} clickhouse-client --query "
+      ALTER TABLE signoz_logs.logs_v2_resource
+      MODIFY TTL (toDateTime(seen_at_ts_bucket_start) + toIntervalDay({{ retention_logs_days }})) DELETE;
+    "
+  become: true
+  become_user: "{{ ops_user }}"
+  changed_when: false
+
+- name: Set retention on logs attribute keys
+  shell: |
+    docker exec {{ ch_container.stdout }} clickhouse-client --query "
+      ALTER TABLE signoz_logs.logs_attribute_keys
+      MODIFY TTL timestamp + toIntervalDay({{ retention_logs_days }}) DELETE;
+    "
+  become: true
+  become_user: "{{ ops_user }}"
+  changed_when: false
+
+- name: Set retention on logs resource keys
+  shell: |
+    docker exec {{ ch_container.stdout }} clickhouse-client --query "
+      ALTER TABLE signoz_logs.logs_resource_keys
+      MODIFY TTL timestamp + toIntervalDay({{ retention_logs_days }}) DELETE;
+    "
+  become: true
+  become_user: "{{ ops_user }}"
+  changed_when: false
+
+- name: Set retention on logs tag attributes
+  shell: |
+    docker exec {{ ch_container.stdout }} clickhouse-client --query "
+      ALTER TABLE signoz_logs.tag_attributes_v2
+      MODIFY TTL toDateTime(unix_milli / 1000) + toIntervalDay({{ retention_logs_days }}) DELETE;
+    "
+  become: true
+  become_user: "{{ ops_user }}"
+  changed_when: false
+
+- name: Set retention on traces index tables
+  shell: |
+    docker exec {{ ch_container.stdout }} clickhouse-client --query "
+      ALTER TABLE signoz_traces.{{ item }}
+      MODIFY TTL toDateTime(timestamp) + toIntervalDay({{ retention_traces_days }}) DELETE;
+    "
+  become: true
+  become_user: "{{ ops_user }}"
+  changed_when: false
+  loop:
+    - signoz_index_v2
+    - signoz_index_v3
+    - signoz_spans
+    - signoz_error_index_v2
+    - durationSort
+    - dependency_graph_minutes_v2
+
+- name: Set retention on traces resource tables
+  shell: |
+    docker exec {{ ch_container.stdout }} clickhouse-client --query "
+      ALTER TABLE signoz_traces.traces_v3_resource
+      MODIFY TTL (toDateTime(seen_at_ts_bucket_start) + toIntervalDay({{ retention_traces_days }})) DELETE;
+    "
+  become: true
+  become_user: "{{ ops_user }}"
+  changed_when: false
+
+- name: Set retention on traces attribute tables
+  shell: |
+    docker exec {{ ch_container.stdout }} clickhouse-client --query "
+      ALTER TABLE signoz_traces.{{ item.table }}
+      MODIFY TTL {{ item.expr }} + toIntervalDay({{ retention_traces_days }}) DELETE;
+    "
+  become: true
+  become_user: "{{ ops_user }}"
+  changed_when: false
+  loop:
+    - {table: tag_attributes_v2, expr: "toDateTime(unix_milli / 1000)"}
+    - {table: trace_summary, expr: "toDateTime(end)"}
+    - {table: usage_explorer, expr: "toDateTime(timestamp)"}
+
+- name: Set retention on traces span attribute keys
+  shell: |
+    docker exec {{ ch_container.stdout }} clickhouse-client --query "
+      ALTER TABLE signoz_traces.span_attributes_keys
+      MODIFY TTL timestamp + toIntervalDay({{ retention_traces_days }}) DELETE;
+    "
+  become: true
+  become_user: "{{ ops_user }}"
+  changed_when: false
+
+- name: Set retention on metrics tables
+  shell: |
+    docker exec {{ ch_container.stdout }} clickhouse-client --query "
+      ALTER TABLE signoz_metrics.{{ item }}
+      MODIFY TTL toDateTime(unix_milli / 1000) + toIntervalDay({{ retention_metrics_days }}) DELETE;
+    "
+  become: true
+  become_user: "{{ ops_user }}"
+  changed_when: false
+  loop:
+    - samples_v4
+    - samples_v4_agg_5m
+    - samples_v4_agg_30m
+    - time_series_v4
+    - time_series_v4_1day
+    - time_series_v4_1week
+    - time_series_v4_6hrs
+    - exp_hist
+
+- name: Set retention on metrics v2 tables
+  shell: |
+    docker exec {{ ch_container.stdout }} clickhouse-client --query "
+      ALTER TABLE signoz_metrics.{{ item }}
+      MODIFY TTL toDateTime(timestamp_ms / 1000) + toIntervalDay({{ retention_metrics_days }}) DELETE;
+    "
+  become: true
+  become_user: "{{ ops_user }}"
+  changed_when: false
+  loop:
+    - samples_v2
+    - time_series_v2
+
+- name: Set retention on metrics metadata
+  shell: |
+    docker exec {{ ch_container.stdout }} clickhouse-client --query "
+      ALTER TABLE signoz_metrics.{{ item }}
+      MODIFY TTL toDateTime(last_reported_unix_milli / 1000) + toIntervalDay({{ retention_metrics_days }}) DELETE;
+    "
+  become: true
+  become_user: "{{ ops_user }}"
+  changed_when: false
+  loop:
+    - metadata

@@ -52,6 +52,6 @@ uptime_kuma_port: 3001
 # ============================================
 # Retention Configuration (days)
 # ============================================
-retention_logs_days: 15
-retention_traces_days: 15
-retention_metrics_days: 30
+retention_logs_days: 7
+retention_traces_days: 7
+retention_metrics_days: 7

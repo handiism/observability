@@ -64,9 +64,9 @@ jobs:
           uptime_kuma_version: "2.4.0"
           uptime_kuma_domain: "${{ secrets.UPTIME_KUMA_DOMAIN }}"
           uptime_kuma_port: 3001
-            retention_logs_days: 7
-            retention_traces_days: 7
-            retention_metrics_days: 7
+          retention_logs_days: 7
+          retention_traces_days: 7
+          retention_metrics_days: 7
           ENDOFFILE
 
       - name: Configure Inventory

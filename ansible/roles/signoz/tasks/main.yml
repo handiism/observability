@@ -254,6 +254,12 @@
   until: "'Up' in uptime_check.stdout"
 
 # ============================================
+# Docker Log Rotation
+# ============================================
+- name: Configure Docker log rotation
+  include_tasks: logrotate.yml
+
+# ============================================
 # ClickHouse Retention Policy
 # ============================================
 - name: Apply ClickHouse retention TTLs

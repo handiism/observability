@@ -1,0 +1,12 @@
+---
+# ============================================
+# Configure Docker container log rotation
+# ============================================
+- name: Deploy Docker logrotate config
+  template:
+    src: docker-logrotate.j2
+    dest: /etc/logrotate.d/docker-containers
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
